@@ -146,6 +146,10 @@ func main() {
 			"web.max-requests",
 			"Maximum number of parallel scrape requests. Use 0 to disable.",
 		).Default("40").Int()
+		disableHome = kingpin.Flag(
+			"web.disable-home",
+			"Disable home page containing a link to the telemetry path.",
+		).Default("false").Bool()
 	)
 
 	log.AddFlags(kingpin.CommandLine)
@@ -157,15 +161,18 @@ func main() {
 	log.Infoln("Build context", version.BuildContext())
 
 	http.Handle(*metricsPath, newHandler(!*disableExporterMetrics, *maxRequests))
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-			<head><title>Node Exporter</title></head>
-			<body>
-			<h1>Node Exporter</h1>
-			<p><a href="` + *metricsPath + `">Metrics</a></p>
-			</body>
-			</html>`))
-	})
+	
+	if !*disableHome {
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(`<html>
+				<head><title>Node Exporter</title></head>
+				<body>
+				<h1>Node Exporter</h1>
+				<p><a href="` + *metricsPath + `">Metrics</a></p>
+				</body>
+				</html>`))
+		})
+	}
 
 	log.Infoln("Listening on", *listenAddress)
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
